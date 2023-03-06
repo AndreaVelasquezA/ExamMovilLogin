@@ -1,9 +1,17 @@
+import 'package:examen_movil/config.dart';
 import 'package:examen_movil/controllers/auth_controller.dart';
 import 'package:examen_movil/listArticFavorit.dart';
 import 'package:examen_movil/listArticView.dart';
+import 'package:examen_movil/models/login_request_model.dart';
+import 'package:examen_movil/models/login_response_model.dart';
+import 'package:examen_movil/pages/login_page.dart';
 import 'package:examen_movil/products.dart';
+import 'package:examen_movil/services/api_service.dart';
 import 'package:examen_movil/startview.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:snippet_coder_utils/FormHelper.dart';
+import 'package:snippet_coder_utils/hex_color.dart';
 
 import 'listArticGrid.dart';
 
@@ -30,8 +38,9 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       debugShowCheckedModeBanner: false,
     
-      initialRoute: "/startView",
+      initialRoute: "/",
       routes: {
+        "/" :(context) => const LoginPage(),
         "/main": (context) => const MyHomePage(title: 'Flutter Demo Home Page'),    
         "/products": (context) => const ListArticView(),  
         "/listGrid": (context) => const ListArticGrid(), 
@@ -64,6 +73,12 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
 
+  bool isAPIcallProcess = false;
+  bool hidePassword = true;
+  GlobalKey<FormState> globalFormKey = GlobalKey<FormState>();
+  String?  username;
+  String?  password;
+
   void _incrementCounter() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -77,6 +92,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+
+
+
     
     AuthController authController = AuthController();
     return Scaffold(
@@ -156,72 +174,111 @@ class _MyHomePageState extends State<MyHomePage> {
                         const SizedBox(
                           height: 20,
                         ),
-                        TextField(
-                          controller: authController.usernameController,
-                          //keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(26),
-                                  borderSide: BorderSide.none),
-                              filled: true,
-                              fillColor: Color(0xFFe7edeb),
-                              hintText: "Username",
-                              prefixIcon: Icon(
-                                Icons.account_circle,
-                                color: Colors.grey[600],
-                              )),
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        TextField(
-                         controller: authController.passwordController,
-                          //keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(26),
-                                  borderSide: BorderSide.none),
-                              filled: true,
-                              fillColor: Color.fromRGBO(231, 237, 235, 1),
-                              hintText: "Password",
-                              prefixIcon: Icon(
-                                Icons.password,
-                                color: Colors.grey[600],
-                              )),
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        Container(
-                          width: 180,
-                          child: ElevatedButton(
-                            onPressed: () {
-                            authController.loginUser();
+
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: FormHelper.inputFieldWidget(
+                            context,
+                            "username", 
+                            "UserName", 
+                            (onValidateVal){
+                              if(onValidateVal.isEmpty){
+                                return "Username Can \'t be empty";
+                              }
+                              return null;
+                            }, 
+                            (onSavedVal){
+                              username = onSavedVal;
                             },
-                            style: ButtonStyle(
-                                foregroundColor:
-                                    MaterialStateProperty.all<Color>(
-                                        Color.fromARGB(255, 207, 207, 207)),
-                                backgroundColor:
-                                    MaterialStateProperty.all<Color>(
-                                        Color.fromRGBO(231, 237, 235, 1)),
-                                shape: MaterialStateProperty.all<
-                                        RoundedRectangleBorder>(
-                                    RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28.0),
-                                ))),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                "Login",
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 16,
-                                ),
+                            borderFocusColor: Colors.white,
+                            prefixIconColor: Colors.white,
+                            borderColor: Colors.white,
+                            textColor: Colors.white,
+                            hintColor: Colors.white,
+                            borderRadius: 10 ),
+                        ),
+
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: FormHelper.inputFieldWidget(
+                            context,
+                            "password", 
+                            "Password", 
+                            (onValidateVal){
+                              if(onValidateVal.isEmpty){
+                                return "Password Can \'t be empty";
+                              }
+                              return null;
+                            }, 
+                            (onSavedVal){
+                              password = onSavedVal;
+                            },
+                            borderFocusColor: Colors.white,
+                            prefixIconColor: Colors.white,
+                            borderColor: Colors.white,
+                            textColor: Colors.white,
+                            hintColor: Colors.white,
+                            borderRadius: 10,
+                            obscureText: hidePassword,
+                            suffixIcon: IconButton(
+                              onPressed: (){
+                                setState(() {
+                                  hidePassword = !hidePassword;
+                                });          
+                              }, 
+                              color: Colors.white.withOpacity(0.7),
+                              icon: Icon(
+                                hidePassword ? Icons.visibility_off : Icons.visibility
                               ),
+                              ) ),
+
+                        ),
+
+                        Center(
+                          child: FormHelper.submitButton(
+                            "Login",
+                            (){
+                              if(validateAndSave()){
+                                setState(() {
+                                  isAPIcallProcess = true;
+                                });
+                        
+                                LoginRequestModel model = LoginRequestModel(username: username!, password: password!);
+                        
+                                APIService.login(model).then((response) {
+                        
+                                  setState(() {
+                                    isAPIcallProcess = false;
+                                  });
+                        
+                                  if(response){
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context, 
+                                      '/startView', 
+                                      (route) => false,
+                                      );
+                                  }
+                                  else{
+                                    FormHelper.showSimpleAlertDialog(
+                                    context, 
+                                    Config.appName, 
+                                    "Invalid Username/password", 
+                                    "ok", 
+                                    (){
+                                      Navigator.pop(context);
+                                    }
+                                    );
+                                  }
+                                });
+                              }
+                            },
+                            btnColor: HexColor("#283B71"),
+                            borderColor: Colors.white,
+                            txtColor: Colors.white,
+                            borderRadius: 10,
                             ),
-                          ),
-                        )
+                        ),
+                        
                       ],
                     )),
               ),
@@ -231,4 +288,19 @@ class _MyHomePageState extends State<MyHomePage> {
         // This trailing comma makes auto-formatting nicer for build methods.
         );
   }
+
+  bool validateAndSave(){
+    final form = globalFormKey.currentState;
+
+    print(form);
+
+    if (form!.validate()){
+      form.save();
+      return true;
+    }
+    else{
+      return false;
+    }
+  }
+
 }

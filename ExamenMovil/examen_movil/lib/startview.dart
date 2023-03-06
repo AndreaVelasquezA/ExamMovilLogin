@@ -148,6 +148,7 @@ class StartView extends StatelessWidget {
                         SizedBox(
                           height: 10,
                         ),
+                        //BOTON CERRAR SESION
                         Container(
                           width: 200,
                           child: ElevatedButton(
